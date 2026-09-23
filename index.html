@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Analítico: La Inteligencia Artificial en la Educación (Perspectiva de Padres)</title>
+  
+  <!-- Dependencias Externas vía CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  
+  <!-- Estilos del Dashboard -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Overlay de Carga -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div style="font-weight: 600; color: #1e293b;">Cargando y analizando datos del estudio...</div>
+  </div>
+
+  <!-- Header Superior -->
+  <header class="app-header">
+    <div class="header-brand">
+      <button id="btnToggleSidebar" class="sidebar-toggle-btn" title="Mostrar/Ocultar Filtros">
+        ☰
+      </button>
+      <div class="brand-icon">IA</div>
+      <div class="brand-info">
+        <h1>IA en la Educación: Padres</h1>
+        <p>Dashboard Analítico Interactivo &amp; Estadística Descriptiva</p>
+      </div>
+    </div>
+
+    <!-- Navegación de Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tabResumen" role="tab" aria-selected="true">
+        <span>📊</span>
+        <span class="tab-text">Resumen General</span>
+      </button>
+      <button class="tab-btn" data-tab="tabUnivariable" role="tab" aria-selected="false">
+        <span>📈</span>
+        <span class="tab-text">Explorador Univariable</span>
+      </button>
+      <button class="tab-btn" data-tab="tabBivariable" role="tab" aria-selected="false">
+        <span>🔄</span>
+        <span class="tab-text">Comparativa Bivariable</span>
+      </button>
+    </nav>
+
+    <div class="header-status">
+      <div class="badge-live">
+        <span class="live-dot"></span>
+        <span id="headerDatasetStatus">Datos en vivo</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal con Sidebar y Área de Trabajo -->
+  <div class="app-container">
+
+    <!-- Sidebar Lateral de Filtros -->
+    <aside id="sidebar" class="app-sidebar">
+      <div class="sidebar-content">
+        
+        <!-- Bloque 0: Carga de Archivo CSV -->
+        <div class="sidebar-section">
+          <div class="section-title">
+            <span>Fuente de Datos</span>
+          </div>
+          <div class="file-upload-box">
+            <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+            <label for="csvFileInput" class="file-upload-label">
+              <span>📁</span> Cargar otro CSV
+            </label>
+            <div id="fileNameDisplay" class="file-name-display" title="Archivo actual">
+              Estudio_ La IA en la Educación.csv
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloque 1: Filtros Demográficos -->
+        <div class="sidebar-section">
+          <div class="section-title">
+            <span>1. Demografía</span>
+          </div>
+          
+          <div class="filter-group">
+            <label for="filterNivelEstudios" class="filter-label">Nivel de Estudios en el Hogar</label>
+            <select id="filterNivelEstudios" class="custom-select">
+              <option value="TODOS">Todos los niveles</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filterIngresoFamiliar" class="filter-label">Ingreso Familiar Mensual</label>
+            <select id="filterIngresoFamiliar" class="custom-select">
+              <option value="TODOS">Todos los rangos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Nivel Escolar de los Hijos</label>
+            <div id="filterNivelHijosChips" class="chips-container">
+              <!-- Chips generados dinámicamente -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloque 2: Supervisión y Uso -->
+        <div class="sidebar-section">
+          <div class="section-title">
+            <span>2. Supervisión y Uso</span>
+          </div>
+
+          <div class="filter-group">
+            <label for="filterNivelSupervision" class="filter-label">Nivel de Supervisión</label>
+            <select id="filterNivelSupervision" class="custom-select">
+              <option value="TODOS">Todos los niveles</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filterFrecuenciaUsoHijo" class="filter-label">Frecuencia de Uso de IA</label>
+            <select id="filterFrecuenciaUsoHijo" class="custom-select">
+              <option value="TODOS">Todas las frecuencias</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bloque 3: Percepción y Conocimiento -->
+        <div class="sidebar-section">
+          <div class="section-title">
+            <span>3. Percepción</span>
+          </div>
+
+          <div class="filter-group">
+            <div class="slider-container">
+              <div class="filter-label">
+                <span>Conocimiento de IA (Mínimo)</span>
+                <span id="conocimientoDisplay" class="badge-conocimiento">≥ 1 / 5</span>
+              </div>
+              <input type="range" id="filterConocimientoMin" class="range-slider" min="1" max="5" value="1" step="1">
+              <div class="slider-values">
+                <span>1 (Bajo)</span>
+                <span>2</span>
+                <span>3 (Medio)</span>
+                <span>4</span>
+                <span>5 (Avanzado)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Impacto Global Percibido</label>
+            <div id="quickImpactoButtons" class="quick-buttons-row">
+              <button class="quick-btn active" data-impact="TODOS">Todos</button>
+              <button class="quick-btn" data-impact="Positivo">Positivo</button>
+              <button class="quick-btn" data-impact="Neutro">Neutro</button>
+              <button class="quick-btn" data-impact="Negativo">Negativo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloque 4: Acciones y Resumen de Filtros -->
+        <div class="sidebar-section sidebar-actions">
+          <button id="btnResetFilters" class="btn-reset">
+            <span>↺</span> Restablecer Filtros
+          </button>
+          <div id="filterCountDisplay" class="filter-stats-text">
+            Cargando encuestados...
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Contenido Principal Dinámico -->
+    <main class="main-content">
+
+      <!-- ================= TAB 1: RESUMEN GENERAL ================= -->
+      <section id="tabResumen" class="tab-pane active">
+        <!-- Fila de 4 KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-label">Respuestas Filtradas</span>
+              <span class="kpi-icon">📋</span>
+            </div>
+            <div id="kpiTotal" class="kpi-value">0</div>
+            <div id="kpiTotalSub" class="kpi-footer">100% de la muestra total</div>
+          </div>
+
+          <div class="kpi-card kpi-cyan">
+            <div class="kpi-header">
+              <span class="kpi-label">Conocimiento de IA</span>
+              <span class="kpi-icon">🧠</span>
+            </div>
+            <div id="kpiConocimiento" class="kpi-value">0.00</div>
+            <div class="kpi-footer">Promedio en escala del 1 al 5</div>
+          </div>
+
+          <div class="kpi-card kpi-amber">
+            <div class="kpi-header">
+              <span class="kpi-label">Moda Supervisión</span>
+              <span class="kpi-icon">🛡️</span>
+            </div>
+            <div id="kpiSupervision" class="kpi-value" style="font-size: 16px; line-height: 1.3;">-</div>
+            <div id="kpiSupervisionSub" class="kpi-footer">Nivel de supervisión predominante</div>
+          </div>
+
+          <div class="kpi-card kpi-green">
+            <div class="kpi-header">
+              <span class="kpi-label">Impacto Positivo</span>
+              <span class="kpi-icon">✨</span>
+            </div>
+            <div id="kpiPositivo" class="kpi-value">0%</div>
+            <div class="kpi-footer">Perciben efecto favorable en la educación</div>
+          </div>
+        </div>
+
+        <!-- Cuadrícula de Gráficos ECharts -->
+        <div class="charts-grid-tab1">
+          <!-- Gráfico Donut -->
+          <div class="card chart-card col-6">
+            <button class="btn-export-svg" data-chart="chartDonutEstudios" data-name="distribucion" title="Descargar gráfico en formato vectorial SVG">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>SVG</span>
+            </button>
+            <div class="card-header">
+              <div class="card-title">
+                <span>🎓</span>
+                <span id="donutTitleText">Distribución por Nivel de Estudios</span>
+              </div>
+              <select id="toggleDonutVar" class="custom-select" style="width: auto; padding: 4px 8px; margin-right: 60px;">
+                <option value="nivelEstudios">Nivel de Estudios</option>
+                <option value="ocupacion">Ocupación Laboral</option>
+              </select>
+            </div>
+            <div id="chartDonutEstudios" class="chart-container-md"></div>
+          </div>
+
+          <!-- Gráfico Barras Horizontales: Ranking de Riesgos -->
+          <div class="card chart-card col-6">
+            <button class="btn-export-svg" data-chart="chartRiesgos" data-name="ranking-riesgos" title="Descargar gráfico en formato vectorial SVG">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>SVG</span>
+            </button>
+            <div class="card-header">
+              <div class="card-title">
+                <span>⚠️</span>
+                <span>Ranking: Principal Riesgo de la IA</span>
+              </div>
+              <span class="card-subtitle" style="margin-right: 60px;">Menciones de mayor preocupación</span>
+            </div>
+            <div id="chartRiesgos" class="chart-container-md"></div>
+          </div>
+
+          <!-- Gráfico Barras Apiladas: Impacto Global por Supervisión -->
+          <div class="card chart-card col-12">
+            <button class="btn-export-svg" data-chart="chartSupervisionImpacto" data-name="impacto-por-supervision" title="Descargar gráfico en formato vectorial SVG">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>SVG</span>
+            </button>
+            <div class="card-header">
+              <div class="card-title">
+                <span>⚖️</span>
+                <span>Percepción del Impacto Global según el Nivel de Supervisión</span>
+              </div>
+              <span class="card-subtitle" style="margin-right: 60px;">Cruce entre acompañamiento parental y postura de impacto</span>
+            </div>
+            <div id="chartSupervisionImpacto" class="chart-container-lg"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 2: EXPLORADOR UNIVARIABLE ================= -->
+      <section id="tabUnivariable" class="tab-pane">
+        <!-- Barra de Configuración Superior -->
+        <div class="univariate-toolbar">
+          <div class="univariate-selector-wrapper">
+            <label for="selectUnivariateVar">Variable a Explorar:</label>
+            <select id="selectUnivariateVar" class="custom-select">
+              <!-- Opciones agregadas por JS -->
+            </select>
+          </div>
+          <div class="univariate-actions">
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Tipo de Gráfico:</span>
+            <button id="btnViewBar" class="btn-toggle-view active" title="Gráfico de Barras">Barras</button>
+            <button id="btnViewPie" class="btn-toggle-view" title="Gráfico Circular">Circular</button>
+          </div>
+        </div>
+
+        <!-- Fila de Estadísticas Descriptivas Adaptativas -->
+        <div id="univariateStatsRow" class="stats-cards-grid">
+          <!-- Inyectado dinámicamente según sea cuantitativa o cualitativa -->
+        </div>
+
+        <!-- Dos Columnas: Tabla de Frecuencias y Gráfico ECharts -->
+        <div class="univariate-details-grid">
+          <!-- Columna Izquierda: Tabla HTML de Frecuencias -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span>📋</span>
+                <span>Tabla de Distribución de Frecuencias</span>
+              </div>
+              <span class="card-subtitle" id="tableSubtitle">fi, hi, %, Fi</span>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table" id="frequencyTable">
+                <thead>
+                  <tr>
+                    <th>Categoría / Valor</th>
+                    <th class="text-right">fi</th>
+                    <th class="text-right">hi</th>
+                    <th class="text-right">%</th>
+                    <th class="text-right">Fi</th>
+                    <th class="text-right">Hi%</th>
+                  </tr>
+                </thead>
+                <tbody id="frequencyTableBody">
+                  <!-- Filas dinámicas -->
+                </tbody>
+                <tfoot id="frequencyTableFoot">
+                  <!-- Totales -->
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Gráfico ECharts -->
+          <div class="card chart-card">
+            <button class="btn-export-svg" data-chart="chartUnivariate" data-name="univariable" title="Descargar gráfico en formato vectorial SVG">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>SVG</span>
+            </button>
+            <div class="card-header">
+              <div class="card-title">
+                <span>📊</span>
+                <span id="univariateChartTitle">Visualización de la Variable</span>
+              </div>
+            </div>
+            <div id="chartUnivariate" class="chart-container-lg"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 3: COMPARATIVA BIVARIABLE ================= -->
+      <section id="tabBivariable" class="tab-pane">
+        <!-- Barra de Configuración Bivariable -->
+        <div class="bivariate-toolbar">
+          <div class="bivariate-select-group">
+            <label for="selectBivarX">Variable X (Eje / Filas):</label>
+            <select id="selectBivarX" class="custom-select">
+              <!-- Opciones dinámicas -->
+            </select>
+          </div>
+
+          <div class="bivariate-select-group">
+            <label for="selectBivarY">Variable Y (Series / Columnas):</label>
+            <select id="selectBivarY" class="custom-select">
+              <!-- Opciones dinámicas -->
+            </select>
+          </div>
+
+          <div class="bivariate-select-group">
+            <label for="selectBivarVizType">Tipo de Visualización:</label>
+            <select id="selectBivarVizType" class="custom-select">
+              <option value="Barras Agrupadas">Barras Agrupadas</option>
+              <option value="Barras Apiladas 100%">Barras Apiladas 100%</option>
+              <option value="Radar">Radar Comparativo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bivariate-sections">
+          <!-- Gráfico Bivariable ECharts -->
+          <div class="card chart-card">
+            <button class="btn-export-svg" data-chart="chartBivariate" data-name="bivariable" title="Descargar gráfico en formato vectorial SVG">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>SVG</span>
+            </button>
+            <div class="card-header">
+              <div class="card-title">
+                <span>🌐</span>
+                <span id="bivariateChartTitle">Gráfico Comparativo Bivariable</span>
+              </div>
+              <span class="card-subtitle" style="margin-right: 60px;">Relación cruzada entre variables</span>
+            </div>
+            <div id="chartBivariate" style="width: 100%; height: 440px;"></div>
+          </div>
+
+          <!-- Tabla de Contingencia (Matriz de doble entrada) -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span>🧮</span>
+                <span>Matriz de Contingencia (Cruce de Frecuencias)</span>
+              </div>
+              <span class="card-subtitle">Frecuencias absolutas observadas y totales marginales</span>
+            </div>
+            <div class="contingency-table-wrapper" id="contingencyTableWrapper">
+              <!-- Matriz generada dinámicamente -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Controlador Principal en JavaScript Modular -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
